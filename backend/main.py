@@ -2,7 +2,6 @@ import os
 import uuid
 import subprocess
 import threading
-import shutil
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -10,7 +9,7 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Video Downloader API")
 
-DOWNLOADS_DIR = Path("downloads")
+DOWNLOADS_DIR = Path("downloads").resolve()
 DOWNLOADS_DIR.mkdir(exist_ok=True)
 
 tasks = {}
@@ -29,37 +28,37 @@ class TaskStatus(BaseModel):
     error: str = ""
 
 def download_video(url: str, task_id: str):
-    output_template = str(DOWNLOADS_DIR / f"{task_id}.%(ext)s")
     try:
+        output_template = f"{task_id}.%(ext)s"
         result = subprocess.run(
-            ["yt-dlp",
-             "--no-playlist",
-             "-f", "bestvideo[height<=4320]+bestaudio/best[height<=4320]",
-             "--merge-output-format", "mp4",
+            ["yt-dlp", "--no-playlist", "-f", "best",
              "-o", output_template,
-             "--print", "filename",
+             "--no-warnings",
              url],
-            capture_output=True, text=True, timeout=120
+            capture_output=True, text=True, timeout=120,
+            cwd=str(DOWNLOADS_DIR)
         )
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+        print(f"[{task_id}] RC={result.returncode}")
+        print(f"[{task_id}] STDERR={stderr[:300]}")
+        print(f"[{task_id}] STDOUT={stdout[:300]}")
+        print(f"[{task_id}] FILES={[str(f) for f in DOWNLOADS_DIR.iterdir()]}")
+
         if result.returncode != 0:
             tasks[task_id]["status"] = "error"
-            tasks[task_id]["error"] = result.stderr.strip()
+            tasks[task_id]["error"] = stderr[:500]
             return
 
-        output_file = result.stdout.strip().split("\n")[-1]
-        if not output_file or not os.path.exists(output_file):
-            tasks[task_id]["status"] = "error"
-            tasks[task_id]["error"] = "File not found after download"
-            return
+        for f in DOWNLOADS_DIR.iterdir():
+            if f.stem == task_id and f.suffix in [".mp4", ".webm", ".mkv", ".avi"]:
+                tasks[task_id]["status"] = "completed"
+                tasks[task_id]["file_path"] = str(f)
+                tasks[task_id]["title"] = f.stem
+                return
 
-        file_ext = Path(output_file).suffix
-        final_path = DOWNLOADS_DIR / f"{task_id}{file_ext}"
-        if output_file != str(final_path):
-            shutil.move(output_file, final_path)
-
-        tasks[task_id]["status"] = "completed"
-        tasks[task_id]["file_path"] = str(final_path)
-        tasks[task_id]["title"] = Path(output_file).stem
+        tasks[task_id]["status"] = "error"
+        tasks[task_id]["error"] = "File not found after download"
 
     except subprocess.TimeoutExpired:
         tasks[task_id]["status"] = "error"
