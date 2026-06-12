@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'screens/home_screen.dart';
@@ -15,6 +16,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  StreamSubscription? _intentSub;
   String? _sharedUrl;
 
   @override
@@ -24,18 +26,36 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _initShareListener() {
-    ReceiveSharingIntent.instance.getTextStream().listen((text) {
-      setState(() => _sharedUrl = _extractUrl(text));
+    _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen((value) {
+      _handleSharedFiles(value);
     });
-    ReceiveSharingIntent.instance.getInitialText().then((text) {
-      setState(() => _sharedUrl = _extractUrl(text));
+
+    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
+      _handleSharedFiles(value);
+      ReceiveSharingIntent.instance.reset();
     });
+  }
+
+  void _handleSharedFiles(List<SharedMediaFile> files) {
+    for (final file in files) {
+      final url = _extractUrl(file.path);
+      if (url != null) {
+        setState(() => _sharedUrl = url);
+        return;
+      }
+    }
   }
 
   String? _extractUrl(String? text) {
     if (text == null) return null;
     final urls = RegExp(r'https?://[^\s]+').allMatches(text);
     return urls.isNotEmpty ? urls.first.group(0) : null;
+  }
+
+  @override
+  void dispose() {
+    _intentSub?.cancel();
+    super.dispose();
   }
 
   @override
