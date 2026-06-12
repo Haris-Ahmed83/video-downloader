@@ -33,7 +33,7 @@ def download_video(url: str, task_id: str):
         result = subprocess.run(
             ["yt-dlp", "--no-playlist", "-f", "best",
              "-o", output_template,
-             "--no-warnings",
+             "--no-warnings", "--no-check-certificates",
              url],
             capture_output=True, text=True, timeout=120,
             cwd=str(DOWNLOADS_DIR)
