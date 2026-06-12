@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:receive_intent/receive_intent.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'screens/home_screen.dart';
 
 void main() {
@@ -24,10 +24,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _initShareListener() {
-    ReceiveIntent.receivedTextStream.listen((text) {
+    ReceiveSharingIntent.instance.getTextStream().listen((text) {
       setState(() => _sharedUrl = _extractUrl(text));
     });
-    ReceiveIntent.getInitialText().then((text) {
+    ReceiveSharingIntent.instance.getInitialText().then((text) {
       setState(() => _sharedUrl = _extractUrl(text));
     });
   }
