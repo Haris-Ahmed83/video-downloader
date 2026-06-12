@@ -1,6 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
 
 void main() {
@@ -16,33 +15,25 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  StreamSubscription? _intentSub;
+  static const _channel = MethodChannel('com.haris.video_downloader/share');
   String? _sharedUrl;
 
   @override
   void initState() {
     super.initState();
-    _initShareListener();
-  }
-
-  void _initShareListener() {
-    _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen((value) {
-      _handleSharedFiles(value);
-    });
-
-    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
-      _handleSharedFiles(value);
-      ReceiveSharingIntent.instance.reset();
-    });
-  }
-
-  void _handleSharedFiles(List<SharedMediaFile> files) {
-    for (final file in files) {
-      final url = _extractUrl(file.path);
-      if (url != null) {
-        setState(() => _sharedUrl = url);
-        return;
+    _checkForSharedText();
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == "onNewIntent") {
+        final text = call.arguments as String?;
+        setState(() => _sharedUrl = _extractUrl(text));
       }
+    });
+  }
+
+  Future<void> _checkForSharedText() async {
+    final text = await _channel.invokeMethod<String>('getSharedText');
+    if (text != null && mounted) {
+      setState(() => _sharedUrl = _extractUrl(text));
     }
   }
 
@@ -50,12 +41,6 @@ class _MyAppState extends State<MyApp> {
     if (text == null) return null;
     final urls = RegExp(r'https?://[^\s]+').allMatches(text);
     return urls.isNotEmpty ? urls.first.group(0) : null;
-  }
-
-  @override
-  void dispose() {
-    _intentSub?.cancel();
-    super.dispose();
   }
 
   @override

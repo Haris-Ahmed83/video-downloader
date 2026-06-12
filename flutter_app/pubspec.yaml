@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  receive_sharing_intent: ^1.8.1
+
   dio: ^5.4.0
   gal: ^2.3.0
   path_provider: ^2.1.2

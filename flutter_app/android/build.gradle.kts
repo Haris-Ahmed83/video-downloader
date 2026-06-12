@@ -22,6 +22,10 @@ subprojects {
             jvmTarget = "17"
         }
     }
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
 }
 
 tasks.register<Delete>("clean") {
