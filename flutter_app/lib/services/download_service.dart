@@ -1,4 +1,4 @@
-import 'package:gallery_saver/gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'api_service.dart';
 
 class DownloadService {
@@ -18,7 +18,7 @@ class DownloadService {
       if (status['status'] == 'completed') {
         onStatus('Download complete! Saving to gallery...');
         final file = await _api.downloadVideo(taskId);
-        await GallerySaver.saveVideo(file.path);
+        await Gal.putVideo(file.path);
         onStatus('Saved to gallery!');
         return;
       }
